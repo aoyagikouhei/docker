@@ -1,0 +1,12 @@
+docker run --rm -it postgres:11.1-alpine bash
+docker run --rm -it -p 5432:5432 postgres:11.1-alpine
+export PLV8_VERSION=2.3.8 
+export PATH=/plv8-2.3.8/build/depot_tools:$PATH
+
+
+docker run --rm -it postgres:11.1 bash
+
+
+docker volume create pgdata
+docker build . -t plv8
+docker run --rm -it -p 5432:5432 plv8 -v pgdata:/var/lib/postgresql/data

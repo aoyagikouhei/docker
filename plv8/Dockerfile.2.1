@@ -1,0 +1,41 @@
+FROM ubuntu:18.04
+
+ENV PG_DATA=/var/lib/postgresql PG_VERSION=11.0 PLV8_VERSION=2.3.8
+
+RUN set -x && \
+  apt update && \
+  apt upgrade -y && \
+  apt install -y \
+    libreadline-dev llvm libssl-dev libicu-dev clang wget gettext git libc++-dev libc++abi-dev
+
+RUN set -x && \
+  wget https://ftp.postgresql.org/pub/source/v$PG_VERSION/postgresql-$PG_VERSION.tar.bz2 && \
+  tar jxvf postgresql-$PG_VERSION.tar.bz2 && \
+  cd postgresql-$PG_VERSION && \
+  ./configure --enable-nls=ja --with-openssl --with-icu && \
+  make install && \
+  cd contrib/pgcrypto && \
+  make install && \
+  cd / && \
+  wget https://github.com/plv8/plv8/archive/v$PLV8_VERSION.tar.gz && \
+  tar zxvf v$PLV8_VERSION.tar.gz && \
+  cd plv8-$PLV8_VERSION && \
+  make install PG_CONFIG=/usr/local/pgsql/bin/pg_config
+
+RUN set -x && \
+  mkdir -p $PG_DATA && \
+  groupadd -r postgres --gid=999 && \
+  useradd -r -g postgres --uid=999 --home-dir=$PG_DATA --shell=/bin/bash postgres && \
+  chown -R postgres:postgres $PG_DATA && \
+  su -c '/usr/local/pgsql/bin/initdb -D $PG_DATA/$PG_VERSION/5432/data --encoding=utf8 --no-locale' postgres && \
+  su -c "echo \"listen_addresses='*'\" >> $PG_DATA/$PG_VERSION/5432/data/postgresql.conf" postgres && \
+  su -c "echo \"host all all 0.0.0.0/0 md5\" >> $PG_DATA/$PG_VERSION/5432/data/pg_hba.conf " postgres && \
+  su -c "echo \"host all all ::/0 md5\" >> $PG_DATA/$PG_VERSION/5432/data/pg_hba.conf " postgres && \
+  su -c '/usr/local/pgsql/bin/pg_ctl -D $PG_DATA/$PG_VERSION/5432/data start' postgres && \
+  su -c "/usr/local/pgsql/bin/psql -c \"CREATE USER docker WITH SUPERUSER PASSWORD 'docker';\"" postgres && \
+  su -c '/usr/local/pgsql/bin/pg_ctl -D $PG_DATA/$PG_VERSION/5432/data -m fast -w stop' postgres
+
+VOLUME $PG_DATA/$PG_VERSION/5432/data
+
+EXPOSE 5432
+CMD ["su", "-c", "/usr/local/pgsql/bin/postgres -D $PG_DATA/$PG_VERSION/5432/data", "postgres"]

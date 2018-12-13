@@ -1,0 +1,19 @@
+FROM postgres:11.0-alpine
+
+ENV PLV8_VERSION=2.3.8
+
+RUN set -ex \
+  && apk add --no-cache --virtual .build-deps \
+    g++ \
+    git \
+    make \
+    perl \
+    python2 \
+  && wget https://github.com/plv8/plv8/archive/v$PLV8_VERSION.tar.gz \
+  && tar zxvf v$PLV8_VERSION.tar.gz \
+  && cd plv8-$PLV8_VERSION \
+  && git config --global user.email "you@example.com"
+  
+  && make install PG_CONFIG=/usr/local/bin/pg_config \
+  && apt del .build-deps \
+  && 
